@@ -1,0 +1,28 @@
+var class_assets_1_1_scripts_1_1_menu_1_1_main_menu =
+[
+    [ "ClearNotification", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a258f443c424400d3d9392a9e1009c472", null ],
+    [ "DisplayNews", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#af566caba4da577f87283f473ed5edb2e", null ],
+    [ "GoToDevMode", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#afe52718a061827eed2c81f5d717d34e1", null ],
+    [ "GoToLogin", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a93a85983192c9830eff6c1f3c53d27ac", null ],
+    [ "GoToRegister", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a2ee45f52d6319f68e01e8d6701cce71e", null ],
+    [ "GoToSetting", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a9cbe4c663569aa6ccb090ded0e4fe329", null ],
+    [ "NotifSortedByDate", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#ad5111d1187911975cab02c46f8fa6fb9", null ],
+    [ "NotifSortedByDist", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a7c2a9420c6bc7880e8f086eb55e15b4f", null ],
+    [ "NotifSortedByPoularity", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a6febb07f43f3c125d179f08168c89e4d", null ],
+    [ "NotifSortedByTag", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a94bb70d37d99fdcb7e337e09b1727691", null ],
+    [ "Play", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#acfdc99086f708747ca220e95935cc0b7", null ],
+    [ "content", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#accc91c4aca042715c1f7a41b9b3c5e9d", null ],
+    [ "devMode", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a52d6f37af17ecada4a715ca6f0fe98ad", null ],
+    [ "listBtnNews", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a876287966a654cff5608ed03beea4a6b", null ],
+    [ "MAX_NOTIF_TO_DISPLAY", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a5a7e3b81fc7de5a68ef0e217c535d8db", null ],
+    [ "newsPrompt", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#ac968594de90220f6bc48aeb45f3d45e4", null ],
+    [ "notifClosestImage", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#aa24a577084437d26ee920e4704c79a5e", null ],
+    [ "notifDateImage", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a503ecdef55da8f26887c040489bcd689", null ],
+    [ "notifPopularityImage", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#ab9c19db0a21352f98b2f0139a50bf3d8", null ],
+    [ "notifTagsDropdown", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a82aa21a36a4ccd2ca543203a509d66c8", null ],
+    [ "notifTemplate", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a493cc15b60b0a8ee54effbcf155dc8e9", null ],
+    [ "playGameButton", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a6d60d61d5007d525a134a49032aaacb4", null ],
+    [ "profilButton", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a441787b1618ffeaf93c497504aec5a32", null ],
+    [ "sortedByTxt", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#abd3c4df639a2ddfd379c26c53f74d062", null ],
+    [ "state", "class_assets_1_1_scripts_1_1_menu_1_1_main_menu.html#a98aaca6367cb689df39950e2725780ae", null ]
+];
