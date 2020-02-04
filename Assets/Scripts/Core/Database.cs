@@ -237,7 +237,7 @@ namespace Assets.Scripts.Core
         /// <param name="rea">Type of reatcion (Sad, Happy, ...)</param>
         /// <param name="idNews">id of the targeted news</param>
         /// <returns>Numb. of reaction for this news</returns>
-        public static string NumOfReatcionToNews(string rea, uint idNews)
+        public static string NumOfReactionToNews(string rea, uint idNews)
         {
             string response = "/";
 
