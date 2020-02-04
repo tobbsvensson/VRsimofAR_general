@@ -3,6 +3,7 @@ using Assets.Scripts.TownSimulation.NewsGO.MediaGO;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,22 @@ namespace Assets.Scripts.Core
     /// </summary>
     static class Database 
     {
+        /// <summary>
+        /// Reaction enumeration. Name and order should match exactly how the reactions are represented in the database.
+        /// </summary>
+        public enum Reaction
+        {
+            None,
+            Happy,
+            Sad,
+            Angry,
+            Surprised
+        }
+
+        private static string ReactionToDatabaseName(Reaction reaction)
+        {
+            return Enum.GetName(typeof(Reaction), reaction);
+        }
 
         /***********************************************************************************************************************************************************/
         /******************************************************************                         ****************************************************************/
@@ -237,14 +254,15 @@ namespace Assets.Scripts.Core
         /// <param name="rea">Type of reatcion (Sad, Happy, ...)</param>
         /// <param name="idNews">id of the targeted news</param>
         /// <returns>Numb. of reaction for this news</returns>
-        public static string NumOfReactionToNews(string rea, uint idNews)
+        public static string NumOfReactionToNews(Reaction rea, uint idNews)
         {
             string response = "/";
 
             ConnectDB();
-            MySqlCommand cmdSQL = new MySqlCommand("SELECT nb" + rea + " FROM NEWS WHERE idNews = @dbNewsId", con);
+            var reactionName = ReactionToDatabaseName(rea);
+            var cmdSQL = new MySqlCommand($"SELECT nb{reactionName} FROM NEWS WHERE idNews = @dbNewsId", con);
             cmdSQL.Parameters.AddWithValue("@dbNewsId", idNews);
-            MySqlDataReader reader = cmdSQL.ExecuteReader();
+            var reader = cmdSQL.ExecuteReader();
 
             try
             {
@@ -300,11 +318,13 @@ namespace Assets.Scripts.Core
         /// <summary>
         /// Decrement the numb. of a reaction for a news. Call when the player change his reaction.
         /// </summary>
-        /// <param name="reactionType">Old player reaction's choice</param>
-        public static void RemoveOneReasctionCount(string reactionType)
+        /// <param name="reaction">Old player reaction's choice</param>
+        public static void RemoveOneReactionCount(Reaction reaction)
         {
             ConnectDB();
-            MySqlCommand cmdSQL = new MySqlCommand("UPDATE NEWS SET nb" + reactionType + " = nb" + reactionType + " - 1 WHERE idNews = @dbNewsId", con);
+            var reactionName = ReactionToDatabaseName(reaction);
+            var cmdSQL = new MySqlCommand(
+                $"UPDATE NEWS SET nb{reactionName} = nb{reactionName} - 1 WHERE idNews = @dbNewsId", con);
             cmdSQL.Parameters.AddWithValue("@dbNewsId", StaticClass.CurrentNewsId);
 
             try
@@ -325,10 +345,12 @@ namespace Assets.Scripts.Core
         /// </summary>
         /// <param name="reactionType">player reaction's choice</param>
         /// <param name="idNews">id of the targeted news</param>
-        public static void AddReactionToDatabaseNews(string reactionType, uint idNews)
+        public static void AddReactionToDatabaseNews(Reaction reaction, uint idNews)
         {
             ConnectDB();
-            MySqlCommand cmdSQL = new MySqlCommand("UPDATE NEWS SET nb" + reactionType + " = nb" + reactionType + " + 1 WHERE idNews = @dbNewsId", con);
+            var reactionName = ReactionToDatabaseName(reaction);
+            var cmdSQL = new MySqlCommand(
+                $"UPDATE NEWS SET nb{reactionName} = nb{reactionName} + 1 WHERE idNews = @dbNewsId", con);
             cmdSQL.Parameters.AddWithValue("@dbNewsId", idNews);
 
             try
@@ -1097,21 +1119,21 @@ namespace Assets.Scripts.Core
         /// Get the selected reaction for current news, set by the current player.
         /// </summary>
         /// <returns> 0 = none, 1 = Happy, 2 = Sad, 3 = Angry, 4 = Surprised <returns>
-        public static byte ReadReactionSelected()
+        public static Reaction ReadReactionSelected()
         {
-            byte res = 0;
+            var res = Reaction.None;
 
             ConnectDB();
-            MySqlCommand cmdSQL = new MySqlCommand("SELECT reactionSelected FROM VIEWS WHERE idNews = @dbNewsId AND idPlayer = @dbPlayerId", con);
+            var cmdSQL = new MySqlCommand("SELECT reactionSelected FROM VIEWS WHERE idNews = @dbNewsId AND idPlayer = @dbPlayerId", con);
             cmdSQL.Parameters.AddWithValue("@dbNewsId", StaticClass.CurrentNewsId);
             cmdSQL.Parameters.AddWithValue("@dbPlayerId", StaticClass.CurrentPlayerId);
-            MySqlDataReader reader = cmdSQL.ExecuteReader();
+            var reader = cmdSQL.ExecuteReader();
 
             try
             {
                 if (reader.Read())
                 {
-                    res = reader.GetByte(0);
+                    res = (Reaction) reader.GetByte(0);
                 }
             }
             catch (IOException ex)
@@ -1125,16 +1147,15 @@ namespace Assets.Scripts.Core
             return res;
         }
 
-
         /// <summary>
         /// Save the selected reaction
         /// </summary>
-        /// <param name="b">reatcion 0 = none, 1 = Happy, 2 = Sad, 3 = Angry, 4 = Surprised </param>
-        public static void SaveReactionSelected(byte b)
+        /// <param name="reaction"></param>
+        public static void SaveReactionSelected(Reaction reaction)
         {
             ConnectDB();
-            MySqlCommand cmdSQL = new MySqlCommand("UPDATE `VIEWS` SET `reactionSelected`= @dbReacToSave WHERE idNews = @dbNewsId AND idPlayer = @dbPlayerId", con);
-            cmdSQL.Parameters.AddWithValue("@dbReacToSave", b);
+            var cmdSQL = new MySqlCommand("UPDATE `VIEWS` SET `reactionSelected`= @dbReacToSave WHERE idNews = @dbNewsId AND idPlayer = @dbPlayerId", con);
+            cmdSQL.Parameters.AddWithValue("@dbReacToSave", (int) reaction);
             cmdSQL.Parameters.AddWithValue("@dbNewsId", StaticClass.CurrentNewsId);
             cmdSQL.Parameters.AddWithValue("@dbPlayerId", StaticClass.CurrentPlayerId);
 
@@ -1148,6 +1169,82 @@ namespace Assets.Scripts.Core
             }
 
             cmdSQL.Dispose();
+            DisconnectDB();
+        }
+
+        /// <summary>
+        /// Reads the current reaction to the news for the current player. If it is different from the one specified,
+        /// decrement the count for that reaction type by one and add one to the new reaction. This is done in a
+        /// transaction to avoid concurrency issues.
+        /// </summary>
+        /// <param name="reaction">the new reaction for the current player</param>
+        public static void CreateOrChangeReactionToNews(Reaction reaction)
+        {
+            ConnectDB();
+            var cmd = con.CreateCommand();
+            var transaction = con.BeginTransaction();
+            cmd.Connection = con;
+            cmd.Transaction = transaction;
+            cmd.Parameters.AddWithValue("@dbNewsId", StaticClass.CurrentNewsId);
+            cmd.Parameters.AddWithValue("@dbPlayerId", StaticClass.CurrentPlayerId);
+            cmd.Parameters.AddWithValue("@dbReaction", (byte) reaction);
+
+            try
+            {
+                cmd.CommandText =
+                    "SELECT reactionSelected FROM VIEWS WHERE idNews = @dbNewsId AND idPlayer = @dbPlayerId LIMIT 1";
+                
+                var previousReaction = Reaction.None;
+                var reader = cmd.ExecuteReader();
+                try
+                {
+                    if (reader.Read())
+                    {
+                        previousReaction = (Reaction) reader.GetByte(0);
+                    }
+                }
+                catch (IOException ex)
+                {
+                    Debug.LogError(ex);
+                }
+                reader.Dispose();
+
+                if (previousReaction != reaction)
+                {
+                    if (previousReaction == Reaction.None)
+                    {
+                        cmd.CommandText = "INSERT INTO `VIEWS` (idPlayer, idNews, dateLatestView, reactionSelected) VALUES (@dbPlayerId, @dbNewsId, NOW(), @dbReaction)";
+                        cmd.ExecuteNonQuery();
+                    }
+                    else
+                    {
+                        cmd.CommandText = "UPDATE `VIEWS` SET dateLatestView = NOW(), reactionSelected = @dbReaction WHERE idNews = @dbNewsId AND idPlayer = @dbPlayerId LIMIT 1";
+                        cmd.ExecuteNonQuery();
+                        
+                        var preReac = ReactionToDatabaseName(previousReaction);
+                        cmd.CommandText = $"UPDATE `NEWS` SET nb{preReac} = nb{preReac} - 1 WHERE idNews = @dbNewsId LIMIT 1";
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    var postReac = ReactionToDatabaseName(reaction);
+                    cmd.CommandText = $"UPDATE `NEWS` SET nb{postReac} = nb{postReac} + 1 WHERE idNews = @dbNewsId LIMIT 1";
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception)
+            {
+                Debug.LogError("Error updating player reaction to news. Attempting to roll back the transaction.");
+                try
+                {
+                    transaction.Rollback();
+                }
+                catch (SqlException ex2)
+                {
+                    Debug.LogError(ex2);
+                }
+            }
+            
+            transaction.Commit();
             DisconnectDB();
         }
 

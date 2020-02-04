@@ -1,6 +1,8 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using System.Collections;
 using Assets.Scripts.Core;
+using UnityEngine.Serialization;
 using Valve.VR.InteractionSystem;
 using Valve.VR;
 
@@ -14,108 +16,51 @@ namespace Assets.Scripts.TownSimulation.NewsGO.Reaction
     [RequireComponent(typeof(Interactable))]
     public class ReactionCursorScript : MonoBehaviour
     {
-        [EnumFlags]
-        [Tooltip("The flags used to attach this object to the hand.")]
-        public Hand.AttachmentFlags attachmentFlags = Hand.AttachmentFlags.ParentToHand | Hand.AttachmentFlags.DetachFromOtherHand;
+        [EnumFlags] [Tooltip("The flags used to attach this object to the hand.")]
+        public Hand.AttachmentFlags attachmentFlags =
+            Hand.AttachmentFlags.ParentToHand | Hand.AttachmentFlags.DetachFromOtherHand;
 
         [EnumFlags]
-        [Tooltip("Name of the attachment transform under in the hand's hierarchy which the object should should snap to.")]
+        [Tooltip(
+            "Name of the attachment transform under in the hand's hierarchy which the object should should snap to.")]
         public GrabTypes grabTypes = GrabTypes.Grip;
 
         [Tooltip("Action to interact with UI.")]
-        public SteamVR_Action_Boolean UI_Interaction_Action = SteamVR_Input.GetBooleanActionFromPath("/actions/default/in/InteractUI");
+        public SteamVR_Action_Boolean UI_Interaction_Action =
+            SteamVR_Input.GetBooleanActionFromPath("/actions/default/in/InteractUI");
 
         [Tooltip("When detaching the object, should it return to its original parent?")]
         public bool restoreOriginalParent = false;
 
+        [Tooltip("How far from the center that the ball should snap")]
+        public float snapDistance = 0.25f;
+        
+        [Tooltip("Distance to the center where the user can leave the ball to make it go back to the middle")]
+        public float centerTolerance = 0.05f;
+        
         private bool attached = false;
 
         public GameObject Highlight;
-       
-
+        
         private Vector3 scale;
         private Quaternion rotation;
 
         private void Start()
         {
-            // Resolve the bug that the cursor will grow when release in vr (don't know where that come from)
-            // Not really resolve but a bit better.
-            scale = this.gameObject.transform.localScale;
-            rotation = this.gameObject.transform.rotation;
-            switch (Database.ReadReactionSelected())
-            {
-                case 0 :
-                    transform.localPosition = new Vector3(-0.1f, 0, 0);
-                    break;
-
-                case 1: //happy
-                    transform.localPosition = new Vector3(0, 0.25f, -0.25f);
-                    break;
-
-                case 2: //sad
-                    transform.localPosition = new Vector3(0, -0.25f, -0.25f);
-                    break;
-
-                case 3: //Angry
-                    transform.localPosition = new Vector3(0, -0.25f, -0.25f);
-                    break;
-
-                case 4: //Surprised
-                    transform.localPosition = new Vector3(0, 0.25f, 0.25f);
-                    break;
-            }
-            
+            var reaction = Database.ReadReactionSelected();
+            var quadrant = GetQuadrantFromReaction(reaction);
+            transform.localPosition = QuadrantToPosition(quadrant);
+            rotation = gameObject.transform.rotation;
+            scale = gameObject.transform.localScale;
         }
-
-        private void OnEnable()
-        {
-            //transform.localPosition = new Vector3(-0.1f, 0, 0);
-        }
-
 
         private void OnDisable()
         {
-            if (transform.localPosition.y < 0f)
-            {
-                if(transform.localPosition.z < 0f)
-                {
-                    UpdateCountReaction();
-                    // Add 1 to Sad in NEWS table and PLAYER table
-                    Database.AddReactionToDatabaseNews("Sad", StaticClass.CurrentNewsId);
-                    Database.SaveReactionSelected(2);
-                }
-                else
-                {
-                    UpdateCountReaction();
-                    // Add 1 to Angry in NEWS table and PLAYER table
-                    Database.AddReactionToDatabaseNews("Angry", StaticClass.CurrentNewsId);
-                    Database.SaveReactionSelected(3);
-                }
-            }
+            var pos = transform.localPosition;
+            var quadrant = PositionToQuadrant(pos);
+            var reaction = QuadrantToReaction(quadrant);
 
-            if (transform.localPosition.y > 0f)
-            {
-                if (transform.localPosition.z < 0f)
-                {
-                    UpdateCountReaction();
-                    // Add 1 to Happy in NEWS table and PLAYER table
-                    Database.AddReactionToDatabaseNews("Happy", StaticClass.CurrentNewsId);
-                    Database.SaveReactionSelected(1);
-                }
-                else
-                {
-                    UpdateCountReaction();
-                    // Add 1 to Surprise in NEWS table and PLAYER table
-                    Database.AddReactionToDatabaseNews("Surprised", StaticClass.CurrentNewsId);
-                    Database.SaveReactionSelected(4);
-                }
-            }
-
-            if (transform.localPosition.y == 0f && transform.localPosition.z == 0f)
-            {
-                UpdateCountReaction();
-                Database.SaveReactionSelected(0);
-            }
+            Database.CreateOrChangeReactionToNews(reaction);
         }
 
         //-------------------------------------------------
@@ -172,47 +117,27 @@ namespace Assets.Scripts.TownSimulation.NewsGO.Reaction
 
             hand.HoverUnlock(null);
 
-            Vector3 pos;
-
-            // Put the ball at the middle of the reaction wanted.
-            if (transform.localPosition.y < 0f)
+            var snapPos = new Vector3(-0.1f, 0, 0);
+            if (!IsWithinCenterTolerance())
             {
-                if (transform.localPosition.z < 0f)
-                {
-                    // Sad
-                    pos = new Vector3(0, -0.25f, -0.25f);
-                }
-                else
-                {
-                    // Angry
-                    pos = new Vector3(0, -0.25f, 0.25f);
-                }
+                var currentPos = transform.localPosition;
+                var quadrant = PositionToQuadrant(currentPos);
+                snapPos = QuadrantToPosition(quadrant);
             }
-            else
-            {
-                if (transform.localPosition.z < 0f)
-                {
-                    // Happy
-                    pos = new Vector3(0, 0.25f, -0.25f);
-                }
-                else
-                {
-                    // Surprise
-                    pos = new Vector3(0, 0.25f, 0.25f);
-                }
-            }
+            
+            transform.localPosition = snapPos;
 
-            // So that the player can put the ball back at the middle if he doesn't want to leave a reaction.
-            if (transform.localPosition.y >-0.05f && transform.localPosition.y < 0.05f && transform.localPosition.z > -0.05f && transform.localPosition.z < 0.05f)
-            {
-                pos = new Vector3(-0.1f,0,0);
-            }
+            // For the deformation bug but doesn't really do the job.
+            gameObject.transform.localScale = scale;
+            gameObject.transform.rotation = rotation;
+        }
 
-            transform.localPosition = pos;
-
-            // Fot the deformation bug but doesn't really do the job.
-            this.gameObject.transform.localScale = scale;
-            this.gameObject.transform.rotation = rotation;
+        private bool IsWithinCenterTolerance()
+        {
+            var currentPos = transform.localPosition;
+            var toleranceSquared = centerTolerance * centerTolerance;
+            var distanceFromCenterSquared = currentPos.y * currentPos.y + currentPos.z * currentPos.z;
+            return distanceFromCenterSquared < toleranceSquared;
         }
 
 
@@ -255,31 +180,87 @@ namespace Assets.Scripts.TownSimulation.NewsGO.Reaction
             gameObject.SetActive(false);
         }
 
-
-
-        public static void UpdateCountReaction()
+        private enum ReactionQuadrant
         {
-            //case 0: no need to decrement
-            switch (Database.ReadReactionSelected())
+            Center,
+            UpperLeft, UpperRight,
+            LowerLeft, LowerRight
+        }
+        
+        private static ReactionQuadrant GetQuadrantFromReaction(Database.Reaction reaction)
+        {
+            switch (reaction)
             {
-                case 1: //happy
-                    Database.RemoveOneReasctionCount("Happy");
-                    break;
-
-                case 2: //sad
-                    Database.RemoveOneReasctionCount("Sad");
-                    break;
-
-                case 3: //Angry
-                    Database.RemoveOneReasctionCount("Angry");
-                    break;
-
-                case 4: //Surprised
-                    Database.RemoveOneReasctionCount("Surprised");
-                    break;
+                case Database.Reaction.None:
+                    return ReactionQuadrant.Center;
+                case Database.Reaction.Happy:
+                    return ReactionQuadrant.UpperRight;
+                case Database.Reaction.Sad:
+                    return ReactionQuadrant.LowerRight;
+                case Database.Reaction.Angry:
+                    return ReactionQuadrant.LowerLeft;
+                case Database.Reaction.Surprised:
+                    return ReactionQuadrant.UpperLeft;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(reaction), reaction, "Invalid reaction type.");
             }
         }
 
+        private static Database.Reaction QuadrantToReaction(ReactionQuadrant quadrant)
+        {
+            switch (quadrant)
+            {
+                case ReactionQuadrant.Center:
+                    return Database.Reaction.None;
+                case ReactionQuadrant.UpperLeft:
+                    return Database.Reaction.Surprised;
+                case ReactionQuadrant.UpperRight:
+                    return Database.Reaction.Happy;
+                case ReactionQuadrant.LowerLeft:
+                    return Database.Reaction.Angry;
+                case ReactionQuadrant.LowerRight:
+                    return Database.Reaction.Sad;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(quadrant), quadrant, "Invalid quadrant type.");
+            }
+        }
 
+        private static bool IsQuadrantUpper(ReactionQuadrant quadrant)
+        {
+            return quadrant == ReactionQuadrant.UpperLeft || quadrant == ReactionQuadrant.UpperRight;
+        }
+        
+        private static bool IsQuadrantRight(ReactionQuadrant quadrant)
+        {
+            return quadrant == ReactionQuadrant.UpperRight || quadrant == ReactionQuadrant.LowerRight;
+        }
+        
+        private Vector3 QuadrantToPosition(ReactionQuadrant quadrant)
+        {
+            if (quadrant == ReactionQuadrant.Center)
+            {
+                return new Vector3(-0.1f, 0, 0);
+            }
+            
+            return new Vector3(0.0f,
+                IsQuadrantUpper(quadrant) ? snapDistance : -snapDistance,
+                IsQuadrantRight(quadrant) ? -snapDistance : snapDistance);
+        }
+
+        private ReactionQuadrant PositionToQuadrant(Vector3 position)
+        {
+            var isUpper = position.y >  float.Epsilon;
+            var isLower = position.y < -float.Epsilon;
+            var isRight = position.z < -float.Epsilon;
+            var isLeft  = position.z >  float.Epsilon;
+
+            var quadrant = ReactionQuadrant.Center;
+            if (isUpper && isLeft)  quadrant = ReactionQuadrant.UpperLeft;
+            if (isUpper && isRight) quadrant = ReactionQuadrant.UpperRight;
+            if (isLower && isLeft)  quadrant = ReactionQuadrant.LowerLeft;
+            if (isLower && isRight) quadrant = ReactionQuadrant.LowerRight;
+
+            return quadrant;
+        }
     }
 }

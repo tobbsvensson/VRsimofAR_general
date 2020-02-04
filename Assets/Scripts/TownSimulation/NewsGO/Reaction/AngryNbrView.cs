@@ -10,10 +10,9 @@ namespace Assets.Scripts.TownSimulation.NewsGO.Reaction
     /// <remarks>Attached to : Resources/Prefabs/News/News/InTheNews/Canvas_Story/ReactionCross/AngryNbr/Canvas/Text</remarks>
     public class AngryNbrView : MonoBehaviour
     {
-
         private void OnEnable()
         {
-            this.GetComponent<Text>().text = Database.NumOfReactionToNews("Angry", StaticClass.CurrentNewsId);
+            GetComponent<Text>().text = Database.NumOfReactionToNews(Database.Reaction.Angry, StaticClass.CurrentNewsId);
         }
     }
 }

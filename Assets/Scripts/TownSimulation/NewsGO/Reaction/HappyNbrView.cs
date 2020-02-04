@@ -13,7 +13,7 @@ namespace Assets.Scripts.TownSimulation.NewsGO.Reaction
 
         private void OnEnable()
         {
-            this.GetComponent<Text>().text = Database.NumOfReactionToNews("Happy", StaticClass.CurrentNewsId);
+            GetComponent<Text>().text = Database.NumOfReactionToNews(Database.Reaction.Happy, StaticClass.CurrentNewsId);
         }
     }
 }
